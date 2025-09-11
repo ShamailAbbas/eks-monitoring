@@ -1,0 +1,14 @@
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp2
+          resources:
+            requests:
+              storage: 500Gi
+thanos:
+  objectStorageConfig:
+    key: thanos.yaml
+    name: thanos-objstore

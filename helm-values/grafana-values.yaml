@@ -1,0 +1,8 @@
+persistence:
+  enabled: true
+  storageClassName: gp2
+  size: 50Gi
+adminUser: admin
+adminPassword: StrongPassword123
+service:
+  type: ClusterIP
