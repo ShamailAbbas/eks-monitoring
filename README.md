@@ -1,17 +1,76 @@
-# **README.md – Production-Ready EKS + Prometheus + Grafana + Thanos Setup**
+# **Production-Ready EKS Monitoring Stack (Prometheus + Grafana + Thanos)**
 
 ## **Project Overview**
 
-This repository provides a **production-ready monitoring stack** on **Amazon EKS (EC2 nodes)** including:
+This repository sets up a **production-ready monitoring stack** on **Amazon EKS (EC2 nodes)** including:
 
-- **Prometheus** for metrics collection
-- **Grafana** for visualization
-- **Thanos** for long-term storage in S3
+- **Prometheus** – metrics collection from Kubernetes & applications
+- **Grafana** – visualization dashboards
+- **Thanos** – long-term metrics storage in S3 (persistent & scalable)
 - **Persistent storage** via EBS PVCs
-- **ALB Ingress** to access Grafana and Prometheus
-- **Cluster autoscaling** using Cluster Autoscaler
+- **AWS ALB ingress** – access Grafana & Prometheus externally
+- **Cluster autoscaler** – automatic scaling of EC2 nodes
 
-The setup is optimized for **high-volume metrics** and **long-term retention**, suitable for heavy workloads.
+The setup is optimized for **massive daily metrics ingestion**.
+
+---
+
+## **Important Note: S3 Bucket for Thanos**
+
+**Before deploying Prometheus + Thanos**, you **must create an S3 bucket** for long-term storage:
+
+1. **Create an S3 bucket in AWS** (same region as EKS):
+
+```text
+Bucket name example: monitoring-metrics-prod
+Region: us-east-1
+Enable versioning: Optional but recommended
+```
+
+2. **Create an IAM user or role** with access to the bucket. Minimum permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::monitoring-metrics-prod",
+        "arn:aws:s3:::monitoring-metrics-prod/*"
+      ]
+    }
+  ]
+}
+```
+
+3. **Update the Thanos secret** with your bucket and credentials:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: thanos-objstore
+  namespace: monitoring
+type: Opaque
+stringData:
+  thanos.yaml: |
+    type: S3
+    config:
+      bucket: monitoring-metrics-prod
+      endpoint: s3.amazonaws.com
+      access_key: YOUR_AWS_ACCESS_KEY
+      secret_key: YOUR_AWS_SECRET_KEY
+      insecure: false
+```
+
+> **Tip:** For production, consider **IRSA (IAM Role for Service Account)** instead of embedding AWS keys in the secret.
 
 ---
 
@@ -21,132 +80,122 @@ The setup is optimized for **high-volume metrics** and **long-term retention**, 
 eks-monitoring/
 ├─ README.md
 ├─ cluster/
-│  ├─ create-eks.sh          # Script to create EKS cluster
-│  └─ delete-eks.sh          # Script to delete EKS cluster
+│  ├─ create-eks.sh
+│  └─ delete-eks.sh
 ├─ manifests/
-│  ├─ namespaces.yaml        # Kubernetes namespaces
-│  ├─ storageclass.yaml      # EBS StorageClass for PVCs
+│  ├─ namespaces.yaml
+│  ├─ storageclass.yaml
 │  ├─ secrets/
-│  │   └─ thanos-secret.yaml # Thanos S3 object storage secret
+│  │   └─ thanos-secret.yaml
 │  ├─ ingress/
 │  │   ├─ grafana-ingress.yaml
 │  │   └─ prometheus-ingress.yaml
 ├─ helm-values/
-│  ├─ prometheus-values.yaml # Helm values for Prometheus + Thanos
-│  └─ grafana-values.yaml    # Helm values for Grafana
+│  ├─ prometheus-values.yaml
+│  └─ grafana-values.yaml
 ├─ scripts/
-│  ├─ setup-alb-controller.sh  # Install AWS Load Balancer Controller
-│  └─ setup-autoscaler.sh      # Install Cluster Autoscaler
+│  ├─ setup-alb-controller.sh
+│  └─ setup-autoscaler.sh
 ```
 
 ---
 
-## **Step 1: Create the EKS Cluster**
+## **Step-by-Step Deployment**
 
-**Script:** `cluster/create-eks.sh`
+> **Important:** Follow this order to avoid failures.
+
+### **Step 1: Create the EKS Cluster**
 
 ```bash
 bash cluster/create-eks.sh
 ```
 
-**What it does:**
+- Creates an **EKS cluster** with EC2 nodes
+- Configures **OIDC provider** for IAM roles (needed for ALB & Thanos if using IRSA)
 
-- Creates an **EKS cluster** with a managed EC2 node group
-- Uses **OIDC provider** for IAM roles (required for ALB controller & service accounts)
-- Node configuration:
+**Customizable:**
 
-  - Type: `m5.large` (adjust based on workload)
-  - Min nodes: 3, Max nodes: 6
+- `CLUSTER_NAME`, `REGION`, `NODE_TYPE`, `NODES`
 
-- Verifies nodes using `kubectl get nodes`
+**Verify:**
 
-**Customizable values:**
-
-- `CLUSTER_NAME` → your cluster name
-- `REGION` → AWS region
-- `NODE_TYPE` → instance type for EC2 nodes
-- `NODES` → initial number of nodes
+```bash
+kubectl get nodes
+```
 
 ---
 
-## **Step 2: Apply Namespaces & StorageClass**
+### **Step 2: Create Namespace**
 
 ```bash
 kubectl apply -f manifests/namespaces.yaml
-kubectl apply -f manifests/storageclass.yaml
 ```
 
-**Explanation:**
-
-- `namespaces.yaml`: Creates `monitoring` namespace for Prometheus and Grafana
-- `storageclass.yaml`: Configures EBS **gp3 volumes** for persistent storage of metrics
-- PVCs created by Helm charts will use this storage class
-
-**Customizable values:**
-
-- `StorageClass.name` → change from `gp2` if needed
-- `type` → `gp2` or `gp3`
-- `reclaimPolicy` → `Retain` or `Delete` (Retain is safer for production)
+- Namespace `monitoring` is required for Prometheus, Grafana, and Thanos secret
 
 ---
 
-## **Step 3: Create Thanos Secret for S3 Remote Storage**
+### **Step 3: Create StorageClass**
+
+```bash
+kubectl apply -f manifests/storageclass.yaml
+```
+
+- Creates **EBS gp3 StorageClass** for PVCs
+- Used by Prometheus (metrics) and Grafana (dashboards)
+
+**Customizable:**
+
+- `parameters.type` → `gp2` or `gp3`
+- `reclaimPolicy` → `Retain` recommended
+- `volumeBindingMode` → `WaitForFirstConsumer`
+
+---
+
+### **Step 4: Create Thanos Secret**
 
 ```bash
 kubectl apply -f manifests/secrets/thanos-secret.yaml
 ```
 
-**Explanation:**
+- Provides **S3 bucket config and credentials** to Prometheus for long-term storage
+- Must exist **before installing Prometheus**, otherwise remote storage fails
 
-- Stores your **S3 credentials** and bucket config as a Kubernetes secret
-- Prometheus reads it to push metrics to **S3 via Thanos**
-- This allows **massive data retention beyond local PVC limits**
+**Customizable:**
 
-**Customizable values inside secret:**
-
-- `bucket` → your S3 bucket
-- `access_key` / `secret_key` → AWS IAM credentials
-- `endpoint` → default `s3.amazonaws.com` for AWS
+- `bucket` → your S3 bucket name
+- `access_key` / `secret_key` → IAM credentials
 
 ---
 
-## **Step 4: Install AWS Load Balancer Controller**
+### **Step 5: Install AWS Load Balancer Controller**
 
 ```bash
 bash scripts/setup-alb-controller.sh
 ```
 
-**Explanation:**
-
 - Creates **IAM role & policy** for ALB controller
-- Installs the **Helm chart** for ALB controller
-- Enables **ALB ingress** for Grafana & Prometheus
+- Installs ALB controller via Helm
+- Required before creating Ingress resources
 
-**Customizable values:**
-
-- `CLUSTER_NAME`, `REGION`
-- `vpcId` → auto-detected by default
+**Customizable:** `CLUSTER_NAME`, `REGION`, `vpcId`
 
 ---
 
-## **Step 5: Install Cluster Autoscaler**
+### **Step 6: Install Cluster Autoscaler**
 
 ```bash
 bash scripts/setup-autoscaler.sh
 ```
 
-**Explanation:**
+- Automatically scales EC2 nodes based on load
+- Ensures sufficient resources for Prometheus & Grafana
 
-- Automatically scales EC2 nodes up/down based on workload
-- Ensures Prometheus and Grafana always have enough capacity
-
-**Customizable values:**
-
-- `CLUSTER_NAME`, `REGION`
+**Customizable:** `CLUSTER_NAME`, `REGION`
 
 ---
 
-## **Step 6: Install Prometheus & Grafana via Helm**
+### **Step 7: Install Prometheus & Grafana via Helm**
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -164,20 +213,20 @@ helm install grafana grafana/grafana \
 
 **Explanation:**
 
-- Prometheus collects metrics from **Kubernetes cluster + applications**
-- Grafana visualizes metrics
-- Prometheus is configured to use **PVC for persistence** and **Thanos secret for remote storage**
+- Prometheus collects cluster + application metrics
+- Grafana persists dashboards & configs using PVC
+- Thanos pushes metrics to **S3 for long-term storage**
 
-**Customizable values (helm-values):**
+**Customizable values (`helm-values`):**
 
-- Prometheus retention (`30d`)
-- Storage size (`500Gi`)
-- Grafana persistence size (`50Gi`)
+- `prometheus.prometheusSpec.retention` → 30d default
+- `prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage` → 500Gi
+- `grafana.persistence.size` → 50Gi
 - Admin user/password
 
 ---
 
-## **Step 7: Apply ALB Ingress**
+### **Step 8: Apply ALB Ingress**
 
 ```bash
 kubectl apply -f manifests/ingress/grafana-ingress.yaml
@@ -185,20 +234,17 @@ kubectl apply -f manifests/ingress/prometheus-ingress.yaml
 kubectl get ingress -n monitoring
 ```
 
-**Explanation:**
+- Exposes Grafana & Prometheus externally via **ALB**
+- ALB DNS provides access (no domain needed)
 
-- Exposes Grafana & Prometheus on the internet using **AWS ALB**
-- You get an **ALB URL** to access dashboards
-- No custom domain required
+**Customizable:**
 
-**Customizable values:**
-
-- Annotations for ALB (`scheme: internet-facing` or `internal`)
-- Path rules for different services
+- `alb.ingress.kubernetes.io/scheme`: `internet-facing` or `internal`
+- Path routing rules
 
 ---
 
-## **Step 8: Verify Deployment**
+### **Step 9: Verify Deployment**
 
 ```bash
 kubectl get pods -n monitoring
@@ -208,48 +254,47 @@ kubectl get ingress -n monitoring
 
 - Ensure all pods are **Running/Ready**
 - PVCs are **Bound**
-- Ingress shows **ALB DNS names**
+- Ingress shows **ALB DNS endpoints**
 
 ---
 
-## **Best Practices / Notes**
+## **Best Practices**
 
-1. **Retention & Storage**
+1. **Always create resources in this order:**
 
-   - Prometheus PVC: 500Gi+ recommended for heavy workloads
-   - Grafana PVC: 50Gi+
-   - Adjust `retention` for Prometheus as needed
+   1. S3 bucket (Thanos)
+   2. Namespace
+   3. StorageClass
+   4. Thanos secret
+   5. ALB Controller
+   6. Prometheus + Grafana
+   7. Ingress
 
-2. **Thanos Remote Storage**
+2. **Prometheus Storage & Retention:**
 
-   - Allows long-term storage in S3
-   - Highly recommended for massive daily metrics
+   - PVC: 500Gi+ for heavy workloads
+   - Retention: adjust per metrics volume
 
-3. **Cluster Autoscaler**
+3. **Thanos Remote Storage:**
 
-   - Adjust min/max node counts based on workload
+   - Bucket must exist beforehand
+   - Allows long-term retention beyond PVC
 
-4. **Security**
+4. **Cluster Autoscaler:**
 
-   - Use strong Grafana password
-   - Do not hardcode S3 credentials in production; consider **IRSA (IAM Roles for Service Accounts)**
+   - Ensure min/max nodes sufficient for peak load
 
-5. **Scaling Nodes**
+5. **Security:**
 
-   - Use bigger EC2 instances (`m5.2xlarge`) if your metrics volume grows
+   - Strong Grafana credentials
+   - Consider **IRSA** for S3 instead of embedding keys
 
-6. **Optional Enhancements**
+6. **Optional Enhancements:**
 
-   - Use **TLS with ALB** for HTTPS
-   - Add Prometheus alerting rules
-   - Use **Grafana dashboards as code**
+   - TLS via ALB
+   - Prometheus alerting rules
+   - Version-controlled Grafana dashboards
 
 ---
 
-✅ **Now you have a fully documented, production-ready setup** for:
-
-- EKS cluster with EC2 nodes
-- Persistent Prometheus + Grafana
-- Thanos S3 remote storage
-- ALB ingress access
-- Cluster autoscaling
+✅ Following this guide ensures **metrics persist, scale automatically, and are safely stored long-term in S3**.
