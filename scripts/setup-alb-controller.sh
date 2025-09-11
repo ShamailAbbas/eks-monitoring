@@ -1,29 +1,52 @@
 #!/bin/bash
-CLUSTER_NAME="prod-eks"
-REGION="us-east-1"
+set -euo pipefail
 
-# Associate OIDC provider
-eksctl utils associate-iam-oidc-provider --cluster $CLUSTER_NAME --region $REGION --approve
+##############################################
+# VARIABLES - EDIT THESE FOR YOUR ENVIRONMENT
+##############################################
+CLUSTER_NAME="prod-eks"     # <-- Your EKS cluster name
+AWS_REGION="us-east-1"            # <-- AWS region of your cluster
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+IAM_POLICY_NAME="AWSLoadBalancerControllerIAMPolicy"
+IAM_ROLE_NAME="AmazonEKSLoadBalancerControllerRole"
+SERVICE_ACCOUNT_NAMESPACE="kube-system"
+SERVICE_ACCOUNT_NAME="aws-load-balancer-controller"
+##############################################
 
-# Create IAM policy (from AWS docs)
+echo ">>> Creating IAM policy for ALB controller..."
+curl -o iam-policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/main/docs/install/iam_policy.json
+
 aws iam create-policy \
-  --policy-name AWSLoadBalancerControllerIAMPolicy \
-  --policy-document file://iam-policy.json
+  --policy-name $IAM_POLICY_NAME \
+  --policy-document file://iam-policy.json || echo "Policy may already exist"
 
-# Create service account
-eksctl create iamserviceaccount \
+echo ">>> Creating IAM role for ALB controller with OIDC trust..."
+eksctl utils associate-iam-oidc-provider \
+  --region $AWS_REGION \
   --cluster $CLUSTER_NAME \
-  --namespace kube-system \
-  --name aws-load-balancer-controller \
-  --attach-policy-arn arn:aws:iam::<ACCOUNT_ID>:policy/AWSLoadBalancerControllerIAMPolicy \
   --approve
 
-# Install Helm chart
+eksctl create iamserviceaccount \
+  --cluster $CLUSTER_NAME \
+  --region $AWS_REGION \
+  --namespace $SERVICE_ACCOUNT_NAMESPACE \
+  --name $SERVICE_ACCOUNT_NAME \
+  --attach-policy-arn arn:aws:iam::$ACCOUNT_ID:policy/$IAM_POLICY_NAME \
+  --override-existing-serviceaccounts \
+  --approve
+
+echo ">>> Adding Helm repo for ALB controller..."
 helm repo add eks https://aws.github.io/eks-charts
 helm repo update
-helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
-  -n kube-system \
+
+echo ">>> Installing ALB controller via Helm..."
+helm upgrade -i aws-load-balancer-controller eks/aws-load-balancer-controller \
+  -n $SERVICE_ACCOUNT_NAMESPACE \
   --set clusterName=$CLUSTER_NAME \
   --set serviceAccount.create=false \
-  --set region=$REGION \
-  --set vpcId=$(aws eks describe-cluster --name $CLUSTER_NAME --query "cluster.resourcesVpcConfig.vpcId" --output text)
+  --set serviceAccount.name=$SERVICE_ACCOUNT_NAME \
+  --set region=$AWS_REGION \
+  --set vpcId=$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION \
+        --query "cluster.resourcesVpcConfig.vpcId" --output text)
+
+echo ">>> ALB controller setup completed successfully!"
