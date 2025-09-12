@@ -1,0 +1,36 @@
+server:
+  service:
+    type: LoadBalancer # Expose via AWS ELB
+  extraArgs:
+    - --insecure # Optional: allow HTTP, remove for production
+  ingress:
+    enabled: false # Set true if using ingress
+    hosts:
+      - argocd.example.com
+    annotations: {}
+    tls: []
+
+controller:
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+
+repoServer:
+  resources:
+    limits:
+      cpu: "300m"
+      memory: "256Mi"
+    requests:
+      cpu: "150m"
+      memory: "128Mi"
+
+dex:
+  enabled: false # Enable if you want SSO
+
+configs:
+  cm:
+    application.instanceLabelKey: argocd.argoproj.io/instance
