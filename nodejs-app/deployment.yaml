@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-app
+  namespace: elk
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nodejs-app
+  template:
+    metadata:
+      labels:
+        app: nodejs-app
+    spec:
+      containers:
+        - name: nodejs-app
+          image: thallavi/node-elk-app:latest
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: log-volume
+              mountPath: /usr/src/app/logs
+      volumes:
+        - name: log-volume
+          emptyDir: {}

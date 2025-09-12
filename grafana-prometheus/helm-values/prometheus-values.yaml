@@ -4,11 +4,7 @@ prometheus:
     storageSpec:
       volumeClaimTemplate:
         spec:
-          storageClassName: gp2
+          storageClassName: gp3
           resources:
             requests:
-              storage: 500Gi
-thanos:
-  objectStorageConfig:
-    key: thanos.yaml
-    name: thanos-objstore
+              storage: 5Gi

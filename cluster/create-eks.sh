@@ -1,7 +1,7 @@
 #!/bin/bash
 CLUSTER_NAME="prod-eks"
 REGION="us-east-1"
-NODE_TYPE="m5.large"
+NODE_TYPE="t3.medium"
 NODES=3
 
 # Create EKS cluster with managed nodes
@@ -16,4 +16,5 @@ eksctl create cluster \
   --managed \
   --with-oidc
 
+aws eks update-kubeconfig --region ${REGION} --name ${CLUSTER_NAME}
 kubectl get nodes

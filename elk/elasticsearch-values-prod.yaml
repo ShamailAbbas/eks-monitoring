@@ -1,0 +1,47 @@
+replicas: 6
+
+master:
+  replicas: 3
+  nodeSelector:
+    node-role.kubernetes.io/master: ""
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "1"
+      memory: "4Gi"
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: gp3
+
+data:
+  replicas: 3
+  nodeSelector:
+    node-role.kubernetes.io/data: ""
+  resources:
+    requests:
+      cpu: "1"
+      memory: "4Gi"
+    limits:
+      cpu: "2"
+      memory: "8Gi"
+  volumeClaimTemplate:
+    accessModes: ["ReadWriteOnce"]
+    resources:
+      requests:
+        storage: 100Gi
+    storageClassName: gp3
+
+esConfig:
+  elasticsearch.yml: |
+    cluster.name: "elk-cluster"
+    network.host: 0.0.0.0
+    discovery.seed_hosts: "elasticsearch-master"
+    cluster.initial_master_nodes: "elasticsearch-master-0,elasticsearch-master-1,elasticsearch-master-2"
+    xpack.security.enabled: true
+
+extraEnvs:
+  - name: ES_JAVA_OPTS
+    value: "-Xms2g -Xmx2g"
