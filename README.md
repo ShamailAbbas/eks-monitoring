@@ -6,39 +6,39 @@ This repository contains a **full-edge EKS cluster setup** along with modular de
 
 ## **Repository Overview**
 
-- **cluster/**  
+- **cluster/**
   Contains scripts to **create, manage, and delete the EKS cluster**, including:
 
   - EBS CSI driver setup
   - AWS ALB Controller setup
-  - Cluster Autoscaler setup  
-    **Important:** The cluster must be set up first before deploying anything else.  
-    [See cluster/ README for detailed instructions](cluster/README.md)
+  - Cluster Autoscaler setup
+    **Important:** The cluster must be set up first before deploying anything else.
+    [See cluster/ README for detailed instructions](https://github.com/ShamailAbbas/eks-monitoring/cluster/README.md)
 
-- **prometheus-grafana/**  
+- **prometheus-grafana/**
   Contains a **production-ready monitoring stack** for EKS:
 
   - Prometheus metrics collection
   - Grafana dashboards
-  - Storage configuration via EBS PVCs  
-    [See prometheus-grafana/ README for deployment instructions](prometheus-grafana/README.md)
+  - Storage configuration via EBS PVCs
+    [See prometheus-grafana/ README for deployment instructions](https://github.com/ShamailAbbas/eks-monitoring/prometheus-grafana/README.md)
 
-- **elk/**  
+- **elk/**
   Contains the **ELK stack** for logging:
 
   - Elasticsearch, Logstash, Kibana
-  - Filebeat for log collection  
-    [See elk/ README for deployment instructions](elk/README.md)
+  - Filebeat for log collection
+    [See elk/ README for deployment instructions](https://github.com/ShamailAbbas/eks-monitoring/elk/README.md)
 
-- **node-app/**  
-  Contains a **Node.js application** with Dockerfile for containerized deployment.  
-  [See node-app/ README for instructions](node-app/README.md)
+- **node-app/**
+  Contains a **Node.js application** with Dockerfile for containerized deployment.
+  [See node-app/ README for instructions](https://github.com/ShamailAbbas/eks-monitoring/node-app/README.md)
 
-- **argo-cd/**  
+- **argo-cd/**
   Contains **Argo CD deployment manifests and Helm values** for GitOps management:
   - Install Argo CD in the cluster
-  - Manage applications declaratively via Git  
-    [See argo-cd/ README for deployment instructions](argo-cd/README.md)
+  - Manage applications declaratively via Git
+    [See argo-cd/ README for deployment instructions](https://github.com/ShamailAbbas/eks-monitoring/argo-cd/README.md)
 
 ---
 
