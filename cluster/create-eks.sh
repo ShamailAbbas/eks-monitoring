@@ -1,5 +1,5 @@
 #!/bin/bash
-CLUSTER_NAME="prod-eks"
+CLUSTER_NAME="dev-eks"
 REGION="us-east-1"
 NODE_TYPE="t3.medium"
 NODES=3

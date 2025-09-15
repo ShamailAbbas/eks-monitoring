@@ -1,5 +1,5 @@
 #!/bin/bash
-CLUSTER_NAME="prod-eks"
+CLUSTER_NAME="dev-eks"
 REGION="us-east-1"
 
 helm repo add autoscaler https://kubernetes.github.io/autoscaler

@@ -4,7 +4,7 @@ set -euo pipefail
 ##############################################
 # VARIABLES - EDIT THESE FOR YOUR ENVIRONMENT
 ##############################################
-CLUSTER_NAME="prod-eks"     # <-- Your EKS cluster name
+CLUSTER_NAME="dev-eks"     # <-- Your EKS cluster name
 AWS_REGION="us-east-1"            # <-- AWS region of your cluster
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 IAM_POLICY_NAME="AWSLoadBalancerControllerIAMPolicy"

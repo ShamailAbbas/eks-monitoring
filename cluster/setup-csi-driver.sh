@@ -2,7 +2,7 @@
 # -----------------------------
 # VARIABLES - CHANGE IF NEEDED
 # -----------------------------
-CLUSTER_NAME="prod-eks"
+CLUSTER_NAME="dev-eks"
 REGION="us-east-1"
 SERVICE_ACCOUNT_NAME="ebs-csi-addon-sa"
 NAMESPACE="kube-system"
