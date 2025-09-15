@@ -13,7 +13,7 @@ This repository contains a **full-edge EKS cluster setup** along with modular de
   - AWS ALB Controller setup
   - Cluster Autoscaler setup
     **Important:** The cluster must be set up first before deploying anything else.
-    [See cluster/ README for detailed instructions](https://github.com/ShamailAbbas/eks-monitoring/cluster/README.md)
+    [See cluster/ README for detailed instructions](https://github.com/ShamailAbbas/eks-monitoring/tree/main/cluster/README.md)
 
 - **prometheus-grafana/**
   Contains a **production-ready monitoring stack** for EKS:
@@ -21,24 +21,24 @@ This repository contains a **full-edge EKS cluster setup** along with modular de
   - Prometheus metrics collection
   - Grafana dashboards
   - Storage configuration via EBS PVCs
-    [See prometheus-grafana/ README for deployment instructions](https://github.com/ShamailAbbas/eks-monitoring/prometheus-grafana/README.md)
+    [See prometheus-grafana/ README for deployment instructions](https://github.com/ShamailAbbas/eks-monitoring/tree/main/prometheus-grafana/README.md)
 
 - **elk/**
   Contains the **ELK stack** for logging:
 
   - Elasticsearch, Logstash, Kibana
   - Filebeat for log collection
-    [See elk/ README for deployment instructions](https://github.com/ShamailAbbas/eks-monitoring/elk/README.md)
+    [See elk/ README for deployment instructions](https://github.com/ShamailAbbas/eks-monitoring/tree/main/elk/README.md)
 
 - **node-app/**
   Contains a **Node.js application** with Dockerfile for containerized deployment.
-  [See node-app/ README for instructions](https://github.com/ShamailAbbas/eks-monitoring/node-app/README.md)
+  [See node-app/ README for instructions](https://github.com/ShamailAbbas/eks-monitoring/tree/main/node-app/README.md)
 
 - **argo-cd/**
   Contains **Argo CD deployment manifests and Helm values** for GitOps management:
   - Install Argo CD in the cluster
   - Manage applications declaratively via Git
-    [See argo-cd/ README for deployment instructions](https://github.com/ShamailAbbas/eks-monitoring/argo-cd/README.md)
+    [See argo-cd/ README for deployment instructions](https://github.com/ShamailAbbas/eks-monitoring/tree/main/argo-cd/README.md)
 
 ---
 
