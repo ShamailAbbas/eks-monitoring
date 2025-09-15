@@ -1,8 +1,0 @@
-persistence:
-  enabled: true
-  storageClassName: gp3
-  size: 5Gi
-adminUser: admin
-adminPassword: StrongPassword123
-service:
-  type: ClusterIP

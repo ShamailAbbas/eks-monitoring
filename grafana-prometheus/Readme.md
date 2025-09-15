@@ -33,9 +33,9 @@ helm install prometheus prometheus-community/kube-prometheus-stack \
   --namespace monitoring \
   -f helm-values/prometheus-values.yaml
 
-helm install grafana grafana/grafana \
-  --namespace monitoring \
-  -f helm-values/grafana-values.yaml
+
+kubectl apply -f manifests/alert-rules.yaml
+
 ```
 
 ---
@@ -59,6 +59,65 @@ kubectl get ingress -n monitoring
 ```
 
 ---
+
+## **Grafana Dashboard JSON for node-demo app**
+
+This json will create the dashboard for the mertics defined in the node-demo app. We are mention the four golden signal.
+
+```json
+{
+  "title": "Node.js Golden Signals",
+  "panels": [
+    {
+      "title": "Request Rate (Traffic)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total[1m])",
+          "legendFormat": "{{method}} {{route}} ({{status}})"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "title": "Error Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "rate(http_errors_total[1m])",
+          "legendFormat": "{{method}} {{route}}"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "title": "Latency (p95)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_response_time_seconds_bucket[1m])) by (le, route))",
+          "legendFormat": "{{route}} p95"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+    },
+    {
+      "title": "Event Loop Lag (Saturation)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "nodejs_eventloop_lag_seconds",
+          "legendFormat": "event loop lag"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+    }
+  ],
+  "schemaVersion": 27,
+  "version": 1,
+  "timezone": "browser"
+}
+```
 
 ## **Best Practices**
 

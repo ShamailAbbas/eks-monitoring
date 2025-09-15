@@ -1,0 +1,39 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alert-config
+  labels:
+    alertmanagerConfig: alert
+    release: prometheus
+  namespace: monitoring
+spec:
+  route:
+    receiver: "all-alerts"
+    groupBy: ["alertname"]
+    groupWait: "10s"
+    groupInterval: "10s"
+    repeatInterval: "1m"
+
+  receivers:
+    - name: "all-alerts"
+      slackConfigs:
+        - channel: "#devops"
+          sendResolved: true
+          username: "Alertmanager"
+          iconEmoji: ":warning:"
+          text: |
+            *Alert:* {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+            *Status:* {{ .Status }}
+          apiURL:
+            key: url
+            name: slack-webhook-secret
+      emailConfigs:
+        - to: "shamailabbas61@gmail.com"
+          sendResolved: true
+          smarthost: "smtp.gmail.com:587"
+          from: "shamailabbas61@gmail.com"
+          authUsername: "shamailabbas61@gmail.com"
+          authPassword:
+            key: password
+            name: smtp-secret
+          requireTLS: true

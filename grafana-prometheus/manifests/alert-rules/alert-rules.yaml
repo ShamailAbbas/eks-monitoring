@@ -1,0 +1,65 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: golden-signals-rules
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: golden-signals
+      rules:
+        - alert: AppDown
+          expr: up{job="nodejs-demo"} == 0
+          for: 2m
+          labels:
+            job: "{{ $labels.job }}"
+            namespace: "{{ $labels.namespace }}"
+            severity: critical
+          annotations:
+            summary: "Application is down"
+            description: "Prometheus cannot scrape the nodejs-demo app for more than 2 minutes. The app might be down."
+
+        - alert: HighErrorRate
+          expr: rate(http_requests_total{status="500"}[5m]) > 0.05
+          for: 5m
+          labels:
+            job: "{{ $labels.job }}"
+            namespace: "{{ $labels.namespace }}"
+            severity: critical
+          annotations:
+            summary: "High error rate detected"
+            description: "More than 5% of requests are failing"
+
+        - alert: HighLatency
+          expr: histogram_quantile(0.95, sum(rate(http_response_time_seconds_bucket[5m])) by (le)) > 0.5
+          for: 5m
+          labels:
+            job: "{{ $labels.job }}"
+            namespace: "{{ $labels.namespace }}"
+            severity: warning
+          annotations:
+            summary: "High latency detected"
+            description: "95th percentile latency > 0.5s"
+
+        - alert: HighTraffic
+          expr: rate(http_requests_total[5m]) > 100
+          for: 5m
+          labels:
+            job: "{{ $labels.job }}"
+            namespace: "{{ $labels.namespace }}"
+            severity: warning
+          annotations:
+            summary: "High traffic load"
+            description: "Requests > 100 per second"
+
+        - alert: HighSaturation
+          expr: nodejs_eventloop_lag_seconds > 0.2
+          for: 2m
+          labels:
+            job: "{{ $labels.job }}"
+            namespace: "{{ $labels.namespace }}"
+            severity: warning
+          annotations:
+            summary: "High saturation detected"
+            description: "Event loop lag > 200ms"
